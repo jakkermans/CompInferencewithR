@@ -26,6 +26,7 @@ The p-value from the in-built t-test function is 4.849e-05. Since this is lower 
 #2
 
 ```{r}
+library(ggplot2)
 set.seed(123)
 N <- 1000
 simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
@@ -35,7 +36,9 @@ simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
     experimental_group <- rnorm(n2, mean = mu2, sd = sd2) #sample the experimental group
     p_values[i] <- t.test(control_group, experimental_group)$p.value #perform a t-test and save the p-value
   }
-  plot(density(p_values)) #create a density plot that shows the distribution of the p-values
+  dx <- density(p_values, adjust = 10)
+  plot(dx); polygon(c(dx$x[dx$x < 0.05], 0.05), c(dx$y[dx$x < 0.05], 0.05), col = rgb(1, 0, 0, alpha = 0.5), border = "red", main = "") #create a density plot that shows the distribution of the p-values
+  hist(p_values, freq = FALSE, breaks = 20, ylim = c(0,20))
   power <- mean(p_values < 0.05) #calculate the simulated power
   list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "two.sided")$power) #return a list that contains the simulated power and the true power
 }
