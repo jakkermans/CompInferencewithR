@@ -1,0 +1,44 @@
+---
+title: "Computational Inference with R - Assignment 3"
+author: "Jannick Akkermans & Lauke Stoel"
+date: "13 november 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1: Emperical power calculation
+
+#1
+
+```{r}
+set.seed(123)
+control_group <- rnorm(50, mean = 150, sd = 15) #sample 50 observations from a normal distribution with a mean of 150 and a standard deviation of 15 to be the control group
+control_group
+experimental_group <- rnorm(50, mean = 160, sd = 15) #sample 50 observations from a normal distribution with a mean of 160 and a standard deviation of 15 to be the experimental group
+t.test(control_group, experimental_group)
+```
+
+The p-value from the in-built t-test function is 4.849e-05. Since this is lower than the alpha-level of 0.05, we reject the null hypothesis. Therefore, we accept the alternative hypothesis that the control group and experimental group differ significantly on the exam scores.
+
+#2
+
+```{r}
+set.seed(123)
+N <- 1000
+simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
+  p_values <- numeric(N) #create a vector of 0's whose length is equal to N
+  for (i in 1:N) { #simulate 1000 t-tests
+    control_group <- rnorm(n1, mean = mu1, sd = sd1) #sample the control group
+    experimental_group <- rnorm(n2, mean = mu2, sd = sd2) #sample the experimental group
+    p_values[i] <- t.test(control_group, experimental_group)$p.value #perform a t-test and save the p-value
+  }
+  plot(density(p_values)) #create a density plot that shows the distribution of the p-values
+  power <- mean(p_values < 0.05) #calculate the simulated power
+  list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "two.sided")$power) #return a list that contains the simulated power and the true power
+}
+
+simulateTtest(N, 50, 50, 150, 160, 15, 15)
+```
