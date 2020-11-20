@@ -45,3 +45,71 @@ simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
 
 simulateTtest(N, 50, 50, 150, 160, 15, 15)
 ```
+
+## Part 2: Something about puppies?
+
+- No outliers, so it doesn't matter if permutation or bootstrap
+- Bootstrap has better generalizability
+- Bootstrap is less exact than permutation with small samples
+
+```{r}
+csfi <- c(2,5,5,6,6,7,8,9)
+tfi <- c(1,1,2,3,3,4,5,7,7,8)
+
+var(csfi) #4.57
+var(tfi) #6.54
+
+boxplot(csfi); boxplot(tfi) #Used to check outliers
+```
+
+- No outliers present, so choice is bootstrap test
+
+```{r}
+bootstrapTest <- function(group1, group2, B) {
+  set.seed(123)
+  sample_difference <- mean(group1) - mean(group2) #The difference between the two groups as they are now. This difference is used to calculate the emperical p-value
+  N <- length(group1) #size of group 1
+  M <- length(group2) #size of group 2
+  differences <- numeric(B) #create a vector with 0's with a length equal to the number of repetitions
+  for (i in 1:B) {
+    bootstrap_sample <- sample(c(group1, group2), replace = TRUE) #sample WITH replacement from the original sample
+    tgroup1 <- bootstrap_sample[1:N] 
+    tgroup2 <- bootstrap_sample[(N+1):(N+M)]
+    differences[i] <- mean(tgroup1) - mean(tgroup2)
+  }
+  emp_p <- mean(abs(differences) > abs(sample_difference)) #calculate the proportion of absolute mean differences that is greater than the sample mean differences. We use the absolute value since we want to calculate a two-sided p-value.
+  hist(differences); abline(v = sample_difference, lwd = 2, col = "red")
+  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p)
+}
+
+bootstrapTest(csfi, tfi, 999)
+```
+
+```{r}
+bootstrapTestnosample <- function(group1, group2, B) {
+  set.seed(123)
+  sample_difference <- mean(group1) - mean(group2) #The difference between the two groups as they are now. This difference is used to calculate the emperical p-value
+  N <- length(group1) #size of group 1
+  M <- length(group2) #size of group 2
+  differences <- numeric(B) #create a vector with 0's with a length equal to the number of repetitions
+  combined_sample <- c(group1, group2)
+  for (i in 1:B) {
+    indices <- floor(runif(18, min=1, max=19)) #generate 18 random integers representing the indices of the observations to be selected
+    bootstrap_sample <- combined_sample[indices]
+    tgroup1 <- bootstrap_sample[1:N] 
+    tgroup2 <- bootstrap_sample[(N+1):(N+M)]
+    differences[i] <- mean(tgroup1) - mean(tgroup2)
+  }
+  emp_p <- mean(abs(differences) > abs(sample_difference)) #calculate the proportion of absolute mean differences that is greater than the sample mean differences. We use the absolute value since we want to calculate a two-sided p-value.
+  hist(differences); abline(v = sample_difference, lwd = 2, col = "red")
+  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p)
+}
+
+bootstrapTestnosample(csfi, tfi, 999)
+```
+
+```{r}
+set.seed(123)
+table(sample(c(csfi, tfi), replace = TRUE))
+table(c(csfi, tfi)[dnorm(19, mean = mean(c(csfi, tfi)), sd = sd(c(csfi, tfi)))])
+```
