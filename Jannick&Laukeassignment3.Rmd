@@ -14,11 +14,10 @@ knitr::opts_chunk$set(echo = TRUE)
 #1
 
 ```{r}
-set.seed(123)
+set.seed(123) #set a seed so that the result will be the same every time
 control_group <- rnorm(50, mean = 150, sd = 15) #sample 50 observations from a normal distribution with a mean of 150 and a standard deviation of 15 to be the control group
-control_group
 experimental_group <- rnorm(50, mean = 160, sd = 15) #sample 50 observations from a normal distribution with a mean of 160 and a standard deviation of 15 to be the experimental group
-t.test(control_group, experimental_group)
+t.test(control_group, experimental_group, alternative = "less")
 ```
 
 The p-value from the in-built t-test function is 4.849e-05. Since this is lower than the alpha-level of 0.05, we reject the null hypothesis. Therefore, we accept the alternative hypothesis that the control group and experimental group differ significantly on the exam scores.
@@ -27,8 +26,8 @@ The p-value from the in-built t-test function is 4.849e-05. Since this is lower 
 
 ```{r}
 library(ggplot2)
-set.seed(123)
-N <- 1000
+set.seed(123) #set a seed so that the results will be the same every time the code block is run
+N <- 1000 #set the number of bootstrap replications
 simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
   p_values <- numeric(N) #create a vector of 0's whose length is equal to N
   for (i in 1:N) { #simulate 1000 t-tests
@@ -37,79 +36,105 @@ simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
     p_values[i] <- t.test(control_group, experimental_group)$p.value #perform a t-test and save the p-value
   }
   dx <- density(p_values, adjust = 10)
-  plot(dx); polygon(c(dx$x[dx$x < 0.05], 0.05), c(dx$y[dx$x < 0.05], 0.05), col = rgb(1, 0, 0, alpha = 0.5), border = "red", main = "") #create a density plot that shows the distribution of the p-values
-  hist(p_values, freq = FALSE, breaks = 20, ylim = c(0,20))
-  power <- mean(p_values < 0.05) #calculate the simulated power
-  list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "two.sided")$power) #return a list that contains the simulated power and the true power
+  plot(dx); polygon(c(dx$x[dx$x < 0.05], 0.05), c(dx$y[dx$x < 0.05], 0.05), col = rgb(1, 0, 0, alpha = 0.5), border = "red", main = "") #create a density plot that shows the distribution of the p-values and color the area that is lower than 0.05
+  power <- mean(p_values < 0.05) #calculate the emperical power based on all the bootstrapped p-values
+  list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "two.sided")$power) #return a list that contains the emperical power and the true power
 }
 
 simulateTtest(N, 50, 50, 150, 160, 15, 15)
 ```
 
-## Part 2: Something about puppies?
+## Part 2: Resampling techniques
 
 - No outliers, so it doesn't matter if permutation or bootstrap
 - Bootstrap has better generalizability
 - Bootstrap is less exact than permutation with small samples
 
 ```{r}
-csfi <- c(2,5,5,6,6,7,8,9)
-tfi <- c(1,1,2,3,3,4,5,7,7,8)
+csfi <- c(2,5,5,6,6,7,8,9) #data from the computer-simulated flight instructions group
+tfi <- c(1,1,2,3,3,4,5,7,7,8) #data from the traditional flight instructions group
 
-var(csfi) #4.57
-var(tfi) #6.54
+var(csfi) #calculate the variance of the computer-simulated flight instructions group -> 4.57
+var(tfi) #calculate the variance of the traditional flight instructions group -> 6.54
 
-boxplot(csfi); boxplot(tfi) #Used to check outliers
+boxplot(csfi); boxplot(tfi) #create boxplots for both groups. These are used to check outliers
 ```
 
 - No outliers present, so choice is bootstrap test
 
 ```{r}
 bootstrapTest <- function(group1, group2, B) {
-  set.seed(123)
   sample_difference <- mean(group1) - mean(group2) #The difference between the two groups as they are now. This difference is used to calculate the emperical p-value
   N <- length(group1) #size of group 1
   M <- length(group2) #size of group 2
   differences <- numeric(B) #create a vector with 0's with a length equal to the number of repetitions
   for (i in 1:B) {
     bootstrap_sample <- sample(c(group1, group2), replace = TRUE) #sample WITH replacement from the original sample
-    tgroup1 <- bootstrap_sample[1:N] 
-    tgroup2 <- bootstrap_sample[(N+1):(N+M)]
-    differences[i] <- mean(tgroup1) - mean(tgroup2)
+    tgroup1 <- bootstrap_sample[1:N] #assign the first N sampled observations to the first group
+    tgroup2 <- bootstrap_sample[(N+1):(N+M)] #assign the remaining sampled observations to the second group
+    differences[i] <- mean(tgroup1) - mean(tgroup2) #calcuate the mean difference between the groups and assign it to the differences vector
   }
   emp_p <- mean(abs(differences) > abs(sample_difference)) #calculate the proportion of absolute mean differences that is greater than the sample mean differences. We use the absolute value since we want to calculate a two-sided p-value.
-  hist(differences); abline(v = sample_difference, lwd = 2, col = "red")
-  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p)
+  hist(differences); abline(v = sample_difference, lwd = 2, col = "red") #create a histogram of the distribution of the mean differences. Draw a red vertical line at the position of the observed mean difference
+  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p) #return a list with the observed mean difference, the mean of the bootstrap distribution, the standard deviation of the boostrap distribution and the empericial p-value
 }
 
-bootstrapTest(csfi, tfi, 999)
+bootstrapTest(csfi, tfi, 100000)
 ```
 
 ```{r}
 bootstrapTestnosample <- function(group1, group2, B) {
-  set.seed(123)
   sample_difference <- mean(group1) - mean(group2) #The difference between the two groups as they are now. This difference is used to calculate the emperical p-value
   N <- length(group1) #size of group 1
   M <- length(group2) #size of group 2
   differences <- numeric(B) #create a vector with 0's with a length equal to the number of repetitions
-  combined_sample <- c(group1, group2)
+  combined_sample <- c(group1, group2) #combine the data of both groups into one group
   for (i in 1:B) {
     indices <- floor(runif(18, min=1, max=19)) #generate 18 random integers representing the indices of the observations to be selected
-    bootstrap_sample <- combined_sample[indices]
-    tgroup1 <- bootstrap_sample[1:N] 
-    tgroup2 <- bootstrap_sample[(N+1):(N+M)]
-    differences[i] <- mean(tgroup1) - mean(tgroup2)
+    bootstrap_sample <- combined_sample[indices] #sample the observations based on the randomly generated indices
+    tgroup1 <- bootstrap_sample[1:N] #assign the first N sampled units to the first group
+    tgroup2 <- bootstrap_sample[(N+1):(N+M)] #assign the remaining sampled units to the second group
+    differences[i] <- mean(tgroup1) - mean(tgroup2) #calculate the mean difference between the groups and assign it to the differences vector
   }
   emp_p <- mean(abs(differences) > abs(sample_difference)) #calculate the proportion of absolute mean differences that is greater than the sample mean differences. We use the absolute value since we want to calculate a two-sided p-value.
-  hist(differences); abline(v = sample_difference, lwd = 2, col = "red")
-  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p)
+  hist(differences); abline(v = sample_difference, lwd = 2, col = "red") #create a histogram of the distribution of the mean differences. Draw a red vertical line at the position of the observed mean difference
+  list(Sample_difference = sample_difference, Distribution_mean = mean(differences), Distribution_sd= sd(differences), P_value = emp_p) #return a list with the observed mean difference, the mean of the bootstrap distribution, the standard deviation of the boostrap distribution and the empericial p-value
 }
 
-bootstrapTestnosample(csfi, tfi, 999)
+bootstrapTestnosample(csfi, tfi, 100000)
 ```
 
+#Question 3
+
+When talking about resampling methods for estimation, there are three options to choose from: bootstrapping, the jackknife approach, and the jackknife-after-bootstrap approach. Bootstrapping generally works well but can become computationally heavy. Jackknife produces lower bias, but is not useful for non-smooth statistics. According to the book by Rizzo, jackknife-after-bootstrap produces lowest standard error.
+
+- Bootstrap methods often used when sample data is only available data
+- Jackknife-after-bootstrap can only be used to provide estimate of it's standard error. 
+- Bootstrap can be used to also calculate bias which is maybe more interesting to do
+
 ```{r}
-set.seed(123)
-table(sample(c(csfi, tfi), replace = TRUE))
-table(c(csfi, tfi)[dnorm(19, mean = mean(c(csfi, tfi)), sd = sd(c(csfi, tfi)))])
+library(boot)
+
+bootstrapEstimation <- function(csfi, tfi, B) {
+  sample_difference <- mean(csfi) - mean(tfi) #calculate the observed mean difference between the groups
+  differences <- numeric(B) #create vector of zeros equal in length to the number of replications
+  for (i in 1:B) {
+    csfi_sample <- sample(csfi, replace = TRUE) #sample with replacement from the experimental group
+    tfi_sample <- sample(tfi, replace = TRUE) #sample with replacement from the control group
+    differences[i] <- mean(csfi_sample) - mean(tfi_sample) #calculate the mean difference between the groups and store it inside the differences vector
+  }
+  bias <- mean(differences - sample_difference) #calculate the bias of the estimate
+  se <- sd(differences) #calculate the standard error of the bootstrap distribution
+  list(Estimated_mean_difference = mean(differences), Bias = bias, Standard_Error = se) #return a list that contains the mean of the bootstrap distribution, the bias of the estimated mean difference, and the standard error of the bootstrap distribution
+}
+
+estimates <- bootstrapEstimation(csfi, tfi, 100000)
+
+mean(csfi) - mean(tfi) #the observed mean difference between the control group and the experimental group, which is 1.9
+
+ci_lb <- estimates[[1]] - 1.96 * estimates[[3]] #calculate the lower bound of the 95% confidence interval
+ci_ub <- estimates[[1]] + 1.96 * estimates[[3]] #calculate the upper bound of the 95% confidence interval
+
+confidence_interval <- c(ci_lb, ci_ub) #create the 95% confidence interval of the mean difference between the computer-simulated flight instructions group and the traditional flight instructions group
+confidence_interval
 ```
