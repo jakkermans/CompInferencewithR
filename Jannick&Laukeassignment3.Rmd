@@ -20,7 +20,7 @@ experimental_group <- rnorm(50, mean = 160, sd = 15) #sample 50 observations fro
 t.test(control_group, experimental_group, alternative = "less")
 ```
 
-The p-value from the in-built t-test function is 4.849e-05. Since this is lower than the alpha-level of 0.05, we reject the null hypothesis. Therefore, we accept the alternative hypothesis that the control group and experimental group differ significantly on the exam scores.
+Our null hypothesis is that there is no difference between the control group and the experimental group. Our alternative hypothesis is that the experimental group on average scores higher than the control group. Our expectation is based on past research. We will therefore perform a one-sided t-test using the in-built `t.test()` function. The p-value from this test is 2.425e-05. Since this is lower than the alpha-level of 0.05, we reject the null hypothesis. Therefore, there is statistical evidence that the experimental group on average scores higher than the control group.
 
 #2
 
@@ -36,19 +36,20 @@ simulateTtest <- function(N, n1, n2, mu1, mu2, sd1, sd2) {
     p_values[i] <- t.test(control_group, experimental_group)$p.value #perform a t-test and save the p-value
   }
   dx <- density(p_values, adjust = 10)
-  plot(dx); polygon(c(dx$x[dx$x < 0.05], 0.05), c(dx$y[dx$x < 0.05], 0.05), col = rgb(1, 0, 0, alpha = 0.5), border = "red", main = "") #create a density plot that shows the distribution of the p-values and color the area that is lower than 0.05
+  plot(dx, xlab = "p-value", ylab = "Probability density", main = "Distribution of the simulated p-values"); polygon(c(dx$x[dx$x < 0.05], 0.05), c(dx$y[dx$x < 0.05], 0.05), col = rgb(1, 0, 0, alpha = 0.5), border = "red", main = "") #create a density plot that shows the distribution of the p-values and color the area that is lower than 0.05
   power <- mean(p_values < 0.05) #calculate the emperical power based on all the bootstrapped p-values
-  list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "two.sided")$power) #return a list that contains the emperical power and the true power
+  list(Simulated_power = power, True_power = power.t.test(50, delta = 10, sd = 15, sig.level = 0.05, type = "two.sample", alternative = "one.sided")$power) #return a list that contains the emperical power and the true power
 }
 
 simulateTtest(N, 50, 50, 150, 160, 15, 15)
 ```
+Power is defined as the probability of correctly rejecting the null hypothesis. In this exercise, a simulated value for power is calculated as the proportion of p-values lower than 0.05. The area that is associated with this proportion can be seen in the plot above, where the area with p-values lower than 0.05 is coloured red. The simulation returned a power value of 0.929. The function `power.t.test()` returns a power value of 0.952 which is higher than our simulated power value. This is most likely due to some correction applied in the `power.t.test()` function. In our simulation, every p-value that was lower than 0.05 contributed to the value of the simulated power. However, there could also be some Type-II error cases in this simulated value. This is probably accounted for by the `power.t.test()` function.
 
 ## Part 2: Resampling techniques
 
-- No outliers, so it doesn't matter if permutation or bootstrap
-- Bootstrap has better generalizability
-- Bootstrap is less exact than permutation with small samples
+#Question 1
+
+Firstly, to determine which resampling technique for hypothesis testing we should use, we should check the data for outliers. Bootstrapping does not rely on assumptions of an underlying distribution, but is is more sensitive to outliers than the permutation test. Additionally, it is less exact than the permutation test when you have small samples like in this question. Nevertheless, bootstrapping does have better generalizability than the permutation test.
 
 ```{r}
 csfi <- c(2,5,5,6,6,7,8,9) #data from the computer-simulated flight instructions group
@@ -60,7 +61,7 @@ var(tfi) #calculate the variance of the traditional flight instructions group ->
 boxplot(csfi); boxplot(tfi) #create boxplots for both groups. These are used to check outliers
 ```
 
-- No outliers present, so choice is bootstrap test
+There are no outliers present in the data as can be seen in the boxplots. Therefore, we decided to use bootstrapping in light of the better generalizability.
 
 ```{r}
 bootstrapTest <- function(group1, group2, B) {
@@ -81,6 +82,10 @@ bootstrapTest <- function(group1, group2, B) {
 
 bootstrapTest(csfi, tfi, 100000)
 ```
+
+#Question 2
+
+When you do not want to use the `sample()` function to draw random samples, you could instead generate n random integers. These integers represent the cases from the combined sample that need to be in the random sample. This can be achieved by using the function `runif()` combined with the `floor()` function. This will generate n random integers, possibly containing some duplicates. Therefore, this procedure essentially mimics the bootstrapping approach.
 
 ```{r}
 bootstrapTestnosample <- function(group1, group2, B) {
@@ -104,17 +109,16 @@ bootstrapTestnosample <- function(group1, group2, B) {
 bootstrapTestnosample(csfi, tfi, 100000)
 ```
 
+The results from the approach that did not use the `sample()` function are very close to the results from the approach that did use the `sample()` function. Therefore, it is possible to achieve the same results.
+
 #Question 3
 
 When talking about resampling methods for estimation, there are three options to choose from: bootstrapping, the jackknife approach, and the jackknife-after-bootstrap approach. Bootstrapping generally works well but can become computationally heavy. Jackknife produces lower bias, but is not useful for non-smooth statistics. According to the book by Rizzo, jackknife-after-bootstrap produces lowest standard error.
 
-- Bootstrap methods often used when sample data is only available data
-- Jackknife-after-bootstrap can only be used to provide estimate of it's standard error. 
-- Bootstrap can be used to also calculate bias which is maybe more interesting to do
+Generally, bootstrap methods are often used when the sample data is the only available data. This is the case for this question. Additionally, bootstrap methods can be used to calculate the bias in the estimation and to provide an estimate of the standard error of the bootstrap distribution. The jackknife-after-bootstrap can only provide an estimate of the standard error of it's distribution. Since we believe bias is a relevant aspect of estimation, we decided to use bootstrapping as a resampling technique for estimation. In addition, we will provide a 95% confidence interval of the bootstrap distribution.
 
 ```{r}
-library(boot)
-
+set.seed(123)
 bootstrapEstimation <- function(csfi, tfi, B) {
   sample_difference <- mean(csfi) - mean(tfi) #calculate the observed mean difference between the groups
   differences <- numeric(B) #create vector of zeros equal in length to the number of replications
@@ -129,6 +133,7 @@ bootstrapEstimation <- function(csfi, tfi, B) {
 }
 
 estimates <- bootstrapEstimation(csfi, tfi, 100000)
+estimates
 
 mean(csfi) - mean(tfi) #the observed mean difference between the control group and the experimental group, which is 1.9
 
@@ -138,3 +143,9 @@ ci_ub <- estimates[[1]] + 1.96 * estimates[[3]] #calculate the upper bound of th
 confidence_interval <- c(ci_lb, ci_ub) #create the 95% confidence interval of the mean difference between the computer-simulated flight instructions group and the traditional flight instructions group
 confidence_interval
 ```
+
+Our bootstrap estimation produced a bias of 0.004 (0.0039). This means that there is a difference of 0.004 between our estimatation of the mean difference between the two groups and the true mean difference between the two groups. Since this value is very close to zero, it means that our approach almost provided a unbiased estimate. Still, the bias is very minimal. 
+
+The standard error is a measure of the dispersion of sample means around the population mean. Our approach yielded a standard error of 1.04, which is a reasonable value. It gives us an indication that if we would sample all possible samples from our data and calculate the mean difference for all those samples, they are expected to deviate from the true difference just like in a standard normal distribution.
+
+Finally, we provided a 95% confidence interval of our bootstrap distribution. The 95% confidence interval ranges from -0.14 to 3.95. This means that if we sampled all possible samples from our data, then we would expect that 95% of the true differences falls between these values. However, the 95% confidence interval contains 0. This means that the true difference between the means could be 0. That would mean that we do not know which of the groups scores better on average.
