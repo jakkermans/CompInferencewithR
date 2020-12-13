@@ -2,7 +2,9 @@
 title: "Computational Inference with R - Assignment 3"
 author: "Jannick Akkermans & Lauke Stoel"
 date: "13 november 2020"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 You have the following data: two groups, an experimental and a control group, of 50 participants each, that were randomly assigned to two conditions. The values of interest are the test scores on an exam for both groups. The participants in the experimental grouped received a special training on learning strategies prior to an exam. Based on past research you expect that the control group will have a mean of 150 on the test with standard deviation of 15 and that the experimental group will have a mean on the test scores that is 10 points higher than the control group, with the same standard deviation. You plan to perform a t-test on the data and you would like to know the power of the test. You will estimate the power in two ways: using the in-built R function power.t.test and by simulation.
 
-#1. Assuming that the data are approximately normal, simulate one sample of data and perform a t-test using the R in-built t-test function. What is the p-value of the test? What is your conclusion?
+### 1. Assuming that the data are approximately normal, simulate one sample of data and perform a t-test using the R in-built t-test function. What is the p-value of the test? What is your conclusion?
 
 Our null hypothesis is that there is no difference between the control group and the experimental group. Based on the past research mentioned above, we formulate our alternative hypothesis to be that the experimental group scores higher on average than the control group. Since this is a directional hypothesis, we will perform a one-sided t-test using the built-in `t.test()` function. we choose to test against an alpha level of 0.05.
 
@@ -26,7 +28,7 @@ t.test(control_group, experimental_group, alternative = "less") #perform t-test 
 
 The p-value from this test is 2.425e-05. Since this is lower than the alpha-level of 0.05, we reject the null hypothesis. Therefore, there is statistical evidence supporting the alternative hypothesis that the experimental group scores higher on average than the control group. This evidence would support the claim that the special training on learning strategies is effective. 
 
-#2. Now you will approximate the power by simulation. Assume that the data are normally distributed, write a function that generates data and performs a t-test 1000 times and that stores the values of the t-statistic (or the p-value) in a vector. Thinking about the definition of power in terms of rejecting the null hypothesis, how would you obtain an estimate of the power in this situation? Compare your results with those given by power.t.test.
+### 2. Now you will approximate the power by simulation. Assume that the data are normally distributed, write a function that generates data and performs a t-test 1000 times and that stores the values of the t-statistic (or the p-value) in a vector. Thinking about the definition of power in terms of rejecting the null hypothesis, how would you obtain an estimate of the power in this situation? Compare your results with those given by power.t.test.
 
 ```{r}
 library(ggplot2)
@@ -65,20 +67,22 @@ Power is defined as the probability of correctly rejecting the null hypothesis. 
 
 In this exercise you will use resampling techniques on the Flight instruction data, used in Assignment 2. In Assignment 2 you programmed your own t-test function. The significance of the t-test was evaluated by using the theoretical t-distribution. In this exercise you are asked to use resampling techniques to perform statistical inference.
 
-#1. Choose an appropriate resampling technique and make a function that performs a hypothesis test based on the t-statistic produced by the standard t-test function. Use the in-built `sample()` function to perform the resampling of the data. Include relevant statistics in your function and give the function a clear structure (choose sensible input arguments, organize the output in an efficient way, add comments, etc). Show the results of your resampling technique on the Flight instruction data.
+### 1. Choose an appropriate resampling technique and make a function that performs a hypothesis test based on the t-statistic produced by the standard t-test function. Use the in-built `sample()` function to perform the resampling of the data. Include relevant statistics in your function and give the function a clear structure (choose sensible input arguments, organize the output in an efficient way, add comments, etc). Show the results of your resampling technique on the Flight instruction data.
 
 The null-hypothesis we intend to test is "there is no difference in the means between the tfi and csfi groups". The alternative hypothesis is formulated as "the means of the tfi and csfi groups differ from each other". 
 
 First, to determine which resampling technique for hypothesis testing we should use, we should check the data for outliers. Bootstrapping does not rely on assumptions of an underlying distribution, but is more sensitive to outliers than the permutation test. Additionally, it is less exact than the permutation test when you have small samples like in this question. Nevertheless, bootstrapping does have better generalisability than the permutation test. 
 
-```{r}
+```{r fig.width=10}
+par(mfrow = c(1,2)) #define parameter for plots
+
 csfi <- c(2,5,5,6,6,7,8,9) #data from the computer-simulated flight instructions group
 tfi <- c(1,1,2,3,3,4,5,7,7,8) #data from the traditional flight instructions group
 
 var(csfi) #calculate the variance of the computer-simulated flight instructions group -> 4.57
 var(tfi) #calculate the variance of the traditional flight instructions group -> 6.54
 
-boxplot(csfi); boxplot(tfi) #create boxplots for both groups. These are used to check outliers
+boxplot(csfi, main = "Computer Simulated Flight Instruction", ylab = "Test score"); boxplot(tfi, main = "Traditional Flight Instructions", ylab = "Test score") #create boxplots for both groups. These are used to check outliers
 ```
 
 There are no outliers present in the data as can be seen in the boxplots. Therefore, we decided to use bootstrapping in light of the better generalisability.
@@ -106,7 +110,7 @@ bootstrapTest(csfi, tfi, 100000)
 ```
 The difference between the two sample means is 1.9. After bootstrapped resampling, the difference in means is -0.005, which is very close to 0, and a standard deviation of 1.155. These data tell us that this distribution mimics the standard normal distribution. The p-value reported is 0.099, indicating to us that there is no statistical evidence to support the alternative hypothesis that the means of these two groups differ from each other significantly. In the context of the example data, our conclusion would be that the computer simulated flight instructions are not a significant improvement upon the traditional flight instruction method. 
 
-#2. How would you program the drawing of random samples when you do not want to use the `sample()` function? Modify the function you have programmed in (1) in such a way that it does not use the `sample()` function anymore (hint: you will have to work with indices). Run your new function and show that you can obtain the same results as in (1).
+### 2. How would you program the drawing of random samples when you do not want to use the `sample()` function? Modify the function you have programmed in (1) in such a way that it does not use the `sample()` function anymore (hint: you will have to work with indices). Run your new function and show that you can obtain the same results as in (1).
 
 When you do not want to use the `sample()` function to draw random samples, you could instead generate n random integers. These integers represent the cases from the combined sample that need to be in the random sample. This can be achieved by using the function `runif()` combined with the `floor()` function. This will generate n random integers, possibly containing some duplicates. Therefore, this procedure essentially mimics the bootstrapping approach.
 
@@ -136,7 +140,7 @@ bootstrapTestnosample(csfi, tfi, 100000)
 
 The results from the approach that did not use the `sample()` function are very close to the results from the approach that did use the `sample()` function. The slight difference in the two sets of results are possibly due to a difference in the distributions the `sample()` and `runif()` functions sample from. The `runif()` function samples from a uniform distribution, whereas the `sample()` function samples from the underlying distribution of the data at hand. This difference becomes negligible as the number of iterations tends to infinity. 
 
-#3. Which resampling technique(s) would you use, if you would be interested in estimation instead of hypothesis testing? Make an R function that performs resampling for estimation purposes using the mean difference between two groups from the t-test function. Your function should produce all relevant aspects of estimation, and you should discuss these aspects and put them in perspective. Again use the Flight instruction data to show the results of your function.
+### 3. Which resampling technique(s) would you use, if you would be interested in estimation instead of hypothesis testing? Make an R function that performs resampling for estimation purposes using the mean difference between two groups from the t-test function. Your function should produce all relevant aspects of estimation, and you should discuss these aspects and put them in perspective. Again use the Flight instruction data to show the results of your function.
 
 When talking about resampling methods for estimation, there are three options to choose from: bootstrapping, the jackknife approach, and the jackknife-after-bootstrap approach. Bootstrapping generally works well but can become computationally heavy. Jackknife produces lower bias, but is not useful for non-smooth statistics. According to the book by Rizzo, jackknife-after-bootstrap produces lowest standard error.
 
